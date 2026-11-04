@@ -7,15 +7,18 @@ from src.importer.constants.general import (
 )
 
 class APIClient(AuthBase):
-    def __init__(self, base_url : str , token : str | None = None):
+    def _init_(self, base_url : str , token : str | None = None):
         self._base_url = base_url
         self._token = token
         self._session = RetrySession()
 
-    def __call__(self, r):
-        r.headers["Authorization"] = f"Bearer {self._token}" if self._token else ""
+    def _call_(self, r):
+        if self._token:
+            r.headers["Authorization"] = f"Bearer {self._token}"
+        
         return r
-
+    
+    ## we should work on this query parameters here. use request open source code
     def request(self, endpoint_params: dict[str,Any] | None = None, path_params: dict[str, Any] | None = None, query_params: dict[str, Any] | None = None) -> Any:
         r = self._session.request(
             METHOD,
@@ -30,8 +33,8 @@ class APIClient(AuthBase):
     def close(self) -> None:
         self._session.close()
 
-    def __enter__(self):
+    def _enter_(self):
         return self
 
-    def __exit__(self, *exc) -> None:
+    def _exit_(self, *exc) -> None:
         self.close()

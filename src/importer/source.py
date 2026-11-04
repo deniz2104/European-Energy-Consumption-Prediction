@@ -1,8 +1,12 @@
 from dataclasses import dataclass
-from typing import Any, Iterable, Iterator, Protocol
+from typing import Any, Iterable, Iterator, NamedTuple, Protocol
 from itertools import product
 
 from src.importer.client.api_client import APIClient
+
+class Column(NamedTuple):
+    field: str
+    name: str    
 
 class Paginator(Protocol):
     def pages(self, api: APIClient, endpoint_params: dict | None, path_params: dict | None, query_params: dict | None) -> Iterable[Any]: ...
@@ -15,7 +19,7 @@ class Source:
     path_keys: list[str] | None
     path_values: list[list[Any]] | None
     query_params: dict[str, Any] | None
-    columns: dict[str, str]
+    columns: list[Column]
     paginator: Paginator
 
     def __post_init__(self):

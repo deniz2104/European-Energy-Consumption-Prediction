@@ -1,57 +1,37 @@
 import logging
-import pandas as pd
-import requests
 from pathlib import Path
 from typing import Any, Iterable
+
+import pandas as pd
+
 from src.importer.source import Source
 
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 class CsvExporter:
-    def __init__(self, source: Source):
+    def _init_(self, source: Source):
         self.source = source
 
-    def export(self, path: str | Path) -> None:
-        write_csv(self.to_frame(), path)
+    @staticmethod
+    def export(df: pd.DataFrame, path: str | Path) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False, encoding="utf-8")
 
     def to_frame(self) -> pd.DataFrame:
-        df = self._records_to_dataframe(self.source.fetch())
-        if df.empty:
-            return pd.DataFrame(columns=list(self.source.columns.values()))
-        
-        df = self._select_columns(df, self.source.columns)
+        df = self._pages_to_dataframe(self.source.fetch())
+        fields, names = zip(*self.source.columns)
+        df = df.reindex(columns=list(fields)).set_axis(list(names), axis=1)
         return self._drop_incomplete_rows(df)
 
     @staticmethod
-    def _records_to_dataframe(pages: Iterable[Any]) -> pd.DataFrame:
-        page = [pd.DataFrame(record) if isinstance(record, dict) else pd.json_normalize(record) for record in pages]
-        return pd.concat(page, ignore_index=True)
-
-    @staticmethod
-    def _select_columns(df: pd.DataFrame, columns: dict[str, str]) -> pd.DataFrame:
-        wanted_columns = list(columns)
-        return df[wanted_columns].rename(columns=columns)
+    def _pages_to_dataframe(pages: Iterable[list[dict[str, Any]]]) -> pd.DataFrame:
+        frames = [pd.json_normalize(page) for page in pages if page]
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     @staticmethod
     def _drop_incomplete_rows(df: pd.DataFrame) -> pd.DataFrame:
         incomplete = (df.isna() | df.eq("")).any(axis=1)
-        return df[~incomplete]
-
-
-def collect(variants: Iterable[tuple[Source, dict[str, Any]]]) -> pd.DataFrame:
-    frames = []
-    for source, tags in variants:
-        try:
-            df = CsvExporter(source).to_frame()
-        except requests.HTTPError as error:
-            if error.response is not None and error.response.status_code == 404:
-                log.warning("Skipping %s: not found", tags)
-                continue
-            raise
-        frames.append(df.assign(**tags)[[*tags, *df.columns]])
-    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-
-
-def write_csv(df: pd.DataFrame, path: str | Path) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False, encoding="utf-8")
+        if incomplete.any():
+            log.warning("dropped %d/%d rows with a null/empty value", incomplete.sum(), len(df))
+        return df[~incomplete].reset_index(drop=True)

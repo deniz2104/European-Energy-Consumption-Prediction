@@ -1,7 +1,13 @@
 import pandas as pd
-from typing import Final
 
-TODAY = pd.Timestamp.today().normalize()
-END_DATE: Final[str] = (TODAY - pd.Timedelta(days=5)).date().isoformat()
-START_DATE: Final[str] = (pd.Timestamp(END_DATE) - pd.DateOffset(years=3)).date().isoformat()
-YEARS: Final[list[int]] = list(range(pd.Timestamp(START_DATE).year, pd.Timestamp(END_DATE).year + 1))
+LAG_DAYS = 5
+HISTORY_YEARS = 3
+
+def end_date() -> str:
+    return (pd.Timestamp.today().normalize() - pd.Timedelta(days=LAG_DAYS)).date().isoformat()
+
+def start_date() -> str:
+    return (pd.Timestamp(end_date()) - pd.DateOffset(years=HISTORY_YEARS)).date().isoformat()
+
+def years() -> list[int]:
+    return list(range(pd.Timestamp(start_date()).year, pd.Timestamp(end_date()).year + 1))
