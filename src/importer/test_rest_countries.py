@@ -13,7 +13,8 @@ def rest_countries_source(token: str | None) -> Source:
     return Source(
         api_token=token,
         url=REST_COUNTRIES_URL,
-        path_params=None,
+        endpoint_params=None,
+        path_features=None,
         query_params=None,
         columns=REST_COUNTRIES_FIELDS,
         paginator=OffsetPagination(

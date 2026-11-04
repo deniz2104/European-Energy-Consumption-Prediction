@@ -16,10 +16,10 @@ class APIClient(AuthBase):
         r.headers["Authorization"] = f"Bearer {self._token}" if self._token else ""
         return r
 
-    def request(self, path_params: dict[str, Any] | None = None, query_params: dict[str, Any] | None = None) -> Any:
+    def request(self, endpoint_params: dict[str,Any] | None = None, path_params: dict[str, Any] | None = None, query_params: dict[str, Any] | None = None) -> Any:
         r = self._session.request(
             METHOD,
-            self._base_url.format(**(path_params or {})),
+            self._base_url.format(**((endpoint_params or {}) | (path_params or {}))),
             params=query_params,
             auth=self,
             timeout=TIMEOUT,

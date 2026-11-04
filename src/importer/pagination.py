@@ -12,25 +12,26 @@ class SinglePage:
     def __init__(self, records_path: str):
         self.records_path = records_path
 
-    def pages(self, api: APIClient, path_params: dict | None, query_params: dict):
-        raw = api.request(path_params=path_params, query_params=query_params)
+    def pages(self, api: APIClient, endpoint_params: dict | None,  path_params: dict | None, query_params: dict | None):
+        raw = api.request(endpoint_params, path_params, query_params)
         yield _dig_json(raw, self.records_path)
 
-
 class OffsetPagination:
+    START_OFFSET = 0
+
     def __init__(self, limit: int, pause: float, records_path: str, more: str):
         self.limit, self.pause, self.records_path, self.more = limit, pause, records_path, more
 
-    def pages(self, api: APIClient, path_params: dict | None, query_params: dict):
-        offset = 0
+    def pages(self, api: APIClient, endpoint_params: dict | None, path_params: dict | None, query_params: dict | None):
         while True:
             raw = api.request(
-                path_params=path_params,
-                query_params={**query_params, "limit": self.limit, "offset": offset},
+                endpoint_params,
+                path_params,
+                query_params={**(query_params or {}), "limit": self.limit, "offset": self.START_OFFSET},
             )
             records = _dig_json(raw, self.records_path)
             yield records
             if not _dig_json(raw, self.more) or not records:
                 return
-            offset += len(records)
+            self.START_OFFSET += len(records)
             time.sleep(self.pause)
